@@ -29,13 +29,14 @@ term_rest: MULT factor term_rest | DIV factor term_rest | MOD factor term_rest |
 factor: base factor_rest ;
 factor_rest: POWER base factor_rest | ;
 
-base: ID
+// CORREGIDO: function_call ANTES de ID para resolver ambigüedad
+base: function_call              // ← MOVIDO AQUÍ PRIMERO
+    | ID
     | NUMBER
     | FLOAT
     | STRING
     | LPAREN expression RPAREN
     | list_or_matrix_expr
-    | function_call
     | unary_expr
     ;
 
@@ -93,11 +94,11 @@ param_list_rest: COMMA ID param_list_rest | ;
 
 return_stmt: RETURN expression semicolon_opt ;
 
-// Function calls
-function_call: ID LPAREN arg_list RPAREN
-             | ml_function
-             | io_function
-             | plot_function
+// Function calls (CORREGIDO: orden específico para resolver ambigüedades)
+function_call: ID LPAREN arg_list RPAREN      // ← FUNCIONES DE USUARIO PRIMERO
+             | ml_function                     // ← Luego ML functions
+             | io_function                     // ← Luego IO functions
+             | plot_function                   // ← Luego Plot functions
              ;
 
 arg_list: expression arg_list_rest | ;

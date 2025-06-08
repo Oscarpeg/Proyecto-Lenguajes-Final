@@ -408,9 +408,11 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
     
     def visitFunction_call(self, ctx):
         """Handle function calls"""
+        
+        
         if ctx.ID():
-            # Llamada de función de usuario
             func_name = ctx.ID().getText()
+            
             args = self.visit(ctx.arg_list()) if ctx.arg_list() else []
             return self.call_user_function(func_name, args)
         elif ctx.ml_function():

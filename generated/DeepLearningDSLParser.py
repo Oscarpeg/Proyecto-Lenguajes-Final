@@ -78,15 +78,15 @@ def serializedATN():
         1,0,0,0,137,136,1,0,0,0,138,17,1,0,0,0,139,140,3,22,11,0,140,141,
         3,20,10,0,141,19,1,0,0,0,142,143,5,41,0,0,143,144,3,22,11,0,144,
         145,3,20,10,0,145,148,1,0,0,0,146,148,1,0,0,0,147,142,1,0,0,0,147,
-        146,1,0,0,0,148,21,1,0,0,0,149,161,5,59,0,0,150,161,5,56,0,0,151,
-        161,5,57,0,0,152,161,5,58,0,0,153,154,5,48,0,0,154,155,3,10,5,0,
-        155,156,5,49,0,0,156,161,1,0,0,0,157,161,3,28,14,0,158,161,3,64,
-        32,0,159,161,3,24,12,0,160,149,1,0,0,0,160,150,1,0,0,0,160,151,1,
-        0,0,0,160,152,1,0,0,0,160,153,1,0,0,0,160,157,1,0,0,0,160,158,1,
-        0,0,0,160,159,1,0,0,0,161,23,1,0,0,0,162,163,5,37,0,0,163,170,3,
-        22,11,0,164,165,3,26,13,0,165,166,5,48,0,0,166,167,3,10,5,0,167,
-        168,5,49,0,0,168,170,1,0,0,0,169,162,1,0,0,0,169,164,1,0,0,0,170,
-        25,1,0,0,0,171,172,7,0,0,0,172,27,1,0,0,0,173,174,5,52,0,0,174,175,
+        146,1,0,0,0,148,21,1,0,0,0,149,161,3,64,32,0,150,161,5,59,0,0,151,
+        161,5,56,0,0,152,161,5,57,0,0,153,161,5,58,0,0,154,155,5,48,0,0,
+        155,156,3,10,5,0,156,157,5,49,0,0,157,161,1,0,0,0,158,161,3,28,14,
+        0,159,161,3,24,12,0,160,149,1,0,0,0,160,150,1,0,0,0,160,151,1,0,
+        0,0,160,152,1,0,0,0,160,153,1,0,0,0,160,154,1,0,0,0,160,158,1,0,
+        0,0,160,159,1,0,0,0,161,23,1,0,0,0,162,163,5,37,0,0,163,170,3,22,
+        11,0,164,165,3,26,13,0,165,166,5,48,0,0,166,167,3,10,5,0,167,168,
+        5,49,0,0,168,170,1,0,0,0,169,162,1,0,0,0,169,164,1,0,0,0,170,25,
+        1,0,0,0,171,172,7,0,0,0,172,27,1,0,0,0,173,174,5,52,0,0,174,175,
         3,30,15,0,175,176,5,53,0,0,176,179,1,0,0,0,177,179,3,40,20,0,178,
         173,1,0,0,0,178,177,1,0,0,0,179,29,1,0,0,0,180,181,3,34,17,0,181,
         182,3,32,16,0,182,185,1,0,0,0,183,185,1,0,0,0,184,180,1,0,0,0,184,
@@ -1104,6 +1104,10 @@ class DeepLearningDSLParser ( Parser ):
             super().__init__(parent, invokingState)
             self.parser = parser
 
+        def function_call(self):
+            return self.getTypedRuleContext(DeepLearningDSLParser.Function_callContext,0)
+
+
         def ID(self):
             return self.getToken(DeepLearningDSLParser.ID, 0)
 
@@ -1128,10 +1132,6 @@ class DeepLearningDSLParser ( Parser ):
 
         def list_or_matrix_expr(self):
             return self.getTypedRuleContext(DeepLearningDSLParser.List_or_matrix_exprContext,0)
-
-
-        def function_call(self):
-            return self.getTypedRuleContext(DeepLearningDSLParser.Function_callContext,0)
 
 
         def unary_expr(self):
@@ -1169,47 +1169,47 @@ class DeepLearningDSLParser ( Parser ):
             if la_ == 1:
                 self.enterOuterAlt(localctx, 1)
                 self.state = 149
-                self.match(DeepLearningDSLParser.ID)
+                self.function_call()
                 pass
 
             elif la_ == 2:
                 self.enterOuterAlt(localctx, 2)
                 self.state = 150
-                self.match(DeepLearningDSLParser.NUMBER)
+                self.match(DeepLearningDSLParser.ID)
                 pass
 
             elif la_ == 3:
                 self.enterOuterAlt(localctx, 3)
                 self.state = 151
-                self.match(DeepLearningDSLParser.FLOAT)
+                self.match(DeepLearningDSLParser.NUMBER)
                 pass
 
             elif la_ == 4:
                 self.enterOuterAlt(localctx, 4)
                 self.state = 152
-                self.match(DeepLearningDSLParser.STRING)
+                self.match(DeepLearningDSLParser.FLOAT)
                 pass
 
             elif la_ == 5:
                 self.enterOuterAlt(localctx, 5)
                 self.state = 153
-                self.match(DeepLearningDSLParser.LPAREN)
-                self.state = 154
-                self.expression()
-                self.state = 155
-                self.match(DeepLearningDSLParser.RPAREN)
+                self.match(DeepLearningDSLParser.STRING)
                 pass
 
             elif la_ == 6:
                 self.enterOuterAlt(localctx, 6)
-                self.state = 157
-                self.list_or_matrix_expr()
+                self.state = 154
+                self.match(DeepLearningDSLParser.LPAREN)
+                self.state = 155
+                self.expression()
+                self.state = 156
+                self.match(DeepLearningDSLParser.RPAREN)
                 pass
 
             elif la_ == 7:
                 self.enterOuterAlt(localctx, 7)
                 self.state = 158
-                self.function_call()
+                self.list_or_matrix_expr()
                 pass
 
             elif la_ == 8:
