@@ -7,17 +7,18 @@ from antlr4.error.ErrorListener import ErrorListener
 from DeepLearningDSLLexer import DeepLearningDSLLexer
 from DeepLearningDSLParser import DeepLearningDSLParser
 from DeepLearningDSLVisitor import DeepLearningDSLVisitor as DeepLearningDSLBaseVisitor
-
-# Import our engines
 from arithmetic_engine import ArithmeticEngine
 from matrix_engine import MatrixEngine
 from ml_engine import LinearRegressionEngine, MLPClassifierEngine, NeuralNetworkEngine
 from file_manager import FileManager
 from plotter import Plotter
+from kmeans_engine import KMeansEngine
+from autoencoder_engine import AutoencoderEngine
+
 
 
 class DSLInterpreter(DeepLearningDSLBaseVisitor):
-    def __init__(self):  # ✅ CORREGIDO: __init__ en lugar de _init_
+    def __init__(self):
         # Symbol tables
         self.variables = {}
         self.functions = {}
@@ -30,6 +31,8 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
         self.neural_net = NeuralNetworkEngine()
         self.file_manager = FileManager()
         self.plotter = Plotter()
+        self.kmeans = KMeansEngine(n_clusters=2) # Default value, will be overridden by KMEANS call
+        self.autoencoder = AutoencoderEngine(input_dim=2, encoding_dim=1) # Default, will be overridden
         
         # Flag for return values
         self.return_value = None
@@ -159,8 +162,8 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
         elif ctx.expression():
             # Parenthesized expression
             return self.visit(ctx.expression())
-        elif ctx.matrix_expr():
-            return self.visit(ctx.matrix_expr())
+        elif ctx.list_or_matrix_expr():
+            return self.visit(ctx.list_or_matrix_expr())
         elif ctx.function_call():
             return self.visit(ctx.function_call())
         elif ctx.unary_expr():
@@ -178,45 +181,68 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
             return self.arithmetic.trigonometric(func_name, value)
         return None
     
-    def visitMatrix_expr(self, ctx):
-        """Handle matrix expressions"""
-        if ctx.matrix_content():
-            return self.visit(ctx.matrix_content())
+    def visitList_or_matrix_expr(self, ctx):
+        """Handle list or matrix expressions with auto-detection"""
+        if ctx.list_or_matrix_content():
+            return self.visit(ctx.list_or_matrix_content())
         elif ctx.matrix_operation():
             return self.visit(ctx.matrix_operation())
-        return None
+        return []
     
-    def visitMatrix_content(self, ctx):
-        """Build matrix from content"""
-        rows = []
-        # Get first row
-        first_row = self.visit(ctx.matrix_row())
-        rows.append(first_row)
+    def visitList_or_matrix_content(self, ctx):
+        """Build list or matrix with auto-detection"""
+        if not ctx.list_or_matrix_row():
+            return []  # Empty list
         
-        # Get rest of rows
-        rest_rows = self.visit_matrix_content_rest(ctx.matrix_content_rest())
-        rows.extend(rest_rows)
+        elements = []
         
-        return self.matrix.create_matrix(rows)
+        # Get first element/row
+        first_element = self.visit(ctx.list_or_matrix_row())
+        elements.append(first_element)
+        
+        # Get rest of elements/rows
+        if ctx.list_or_matrix_content_rest():
+            rest_elements = self.visit_list_or_matrix_content_rest(ctx.list_or_matrix_content_rest())
+            elements.extend(rest_elements)
+        
+        # AUTO-DETECTION:
+        # If all elements are primitives (int, float, str), return simple list
+        # If any element is a list, return matrix
+        
+        if all(isinstance(elem, (int, float, str, bool)) for elem in elements):
+            # Simple list: [1, 2, 3, "hello"]
+            return elements
+        elif all(isinstance(elem, list) for elem in elements):
+            # Matrix: [[1, 2], [3, 4]]
+            return self.matrix.create_matrix(elements)
+        else:
+            # Mixed types - treat as simple list
+            return elements
     
-    def visit_matrix_content_rest(self, ctx):
-        """Get remaining matrix rows"""
-        if not ctx or not ctx.matrix_row():
+    def visit_list_or_matrix_content_rest(self, ctx):
+        """Get remaining elements/rows"""
+        if not ctx or not ctx.list_or_matrix_row():
             return []
         
-        rows = []
-        row = self.visit(ctx.matrix_row())
-        rows.append(row)
+        elements = []
+        element = self.visit(ctx.list_or_matrix_row())
+        elements.append(element)
         
-        if ctx.matrix_content_rest():
-            rest_rows = self.visit_matrix_content_rest(ctx.matrix_content_rest())
-            rows.extend(rest_rows)
+        if ctx.list_or_matrix_content_rest():
+            rest_elements = self.visit_list_or_matrix_content_rest(ctx.list_or_matrix_content_rest())
+            elements.extend(rest_elements)
         
-        return rows
+        return elements
     
-    def visitMatrix_row(self, ctx):
-        """Build a matrix row"""
-        return self.visit(ctx.expression_list())
+    def visitList_or_matrix_row(self, ctx):
+        """Handle a single row/element"""
+        if ctx.expression_list():
+            # Matrix row: [1, 2, 3]
+            return self.visit(ctx.expression_list())
+        elif ctx.expression():
+            # Simple element: 1, "hello", variable
+            return self.visit(ctx.expression())
+        return None
     
     def visitExpression_list(self, ctx):
         """Build list of expressions"""
@@ -247,7 +273,7 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
         return elements
     
     def visitMatrix_operation(self, ctx):
-        """Handle matrix operations - CORREGIDO"""
+        """Handle matrix operations"""
         try:
             if ctx.TRANSPOSE():
                 matrix = self.visit(ctx.expression(0))
@@ -473,6 +499,93 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
             else:
                 raise ValueError("Object does not have train or fit method")
         
+        # ===== K-MEANS FUNCTIONS =====
+        
+        elif ctx.KMEANS():
+            X = self.visit(ctx.expression(0))
+            n_clusters = self.visit(ctx.expression(1))
+            
+            # Create a new K-Means model and fit it
+            model = KMeansEngine(n_clusters=n_clusters)
+            return model.fit(X)
+        
+        elif ctx.FIT_PREDICT():
+            model = self.visit(ctx.expression(0))
+            X = self.visit(ctx.expression(1))
+            
+            # Check if model has fit_predict method
+            if hasattr(model, 'fit_predict'):
+                return model.fit_predict(X)
+            else:
+                raise ValueError("Object does not have fit_predict method")
+        
+        elif ctx.GET_CENTROIDS():
+            model = self.visit(ctx.expression(0))
+            
+            # Check if model has get_centroids method
+            if hasattr(model, 'get_centroids'):
+                return model.get_centroids()
+            else:
+                raise ValueError("Object does not have get_centroids method")
+        
+        # ===== AUTOENCODER FUNCTIONS =====
+        
+        elif ctx.AUTOENCODER():
+            X = self.visit(ctx.expression(0))
+            encoding_dim = self.visit(ctx.expression(1))
+            
+            # Determinar input_dim automáticamente
+            if X and isinstance(X[0], list):
+                input_dim = len(X[0])  # Matriz: usar longitud de la primera fila
+            elif X:
+                input_dim = len(X)     # Lista: usar longitud total
+            else:
+                input_dim = 2          # Default si no hay datos
+            
+            # Create and train autoencoder
+            model = AutoencoderEngine(input_dim=input_dim, encoding_dim=encoding_dim)
+            return model.fit(X)
+        
+        elif ctx.ENCODE():
+            model = self.visit(ctx.expression(0))
+            X = self.visit(ctx.expression(1))
+            
+            # Check if model has encode method
+            if hasattr(model, 'encode'):
+                return model.encode(X)
+            else:
+                raise ValueError("Object does not have encode method")
+        
+        elif ctx.DECODE():
+            model = self.visit(ctx.expression(0))
+            encoded_X = self.visit(ctx.expression(1))
+            
+            # Check if model has decode method
+            if hasattr(model, 'decode'):
+                return model.decode(encoded_X)
+            else:
+                raise ValueError("Object does not have decode method")
+        
+        elif ctx.RECONSTRUCT():
+            model = self.visit(ctx.expression(0))
+            X = self.visit(ctx.expression(1))
+            
+            # Check if model has reconstruct method
+            if hasattr(model, 'reconstruct'):
+                return model.reconstruct(X)
+            else:
+                raise ValueError("Object does not have reconstruct method")
+        
+        elif ctx.RECONSTRUCTION_ERROR():
+            model = self.visit(ctx.expression(0))
+            X = self.visit(ctx.expression(1))
+            
+            # Check if model has reconstruction_error method
+            if hasattr(model, 'reconstruction_error'):
+                return model.reconstruction_error(X)
+            else:
+                raise ValueError("Object does not have reconstruction_error method")
+        
         return None
     
     def visitIo_function(self, ctx):
@@ -490,21 +603,18 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
         return None
     
     def visitPlot_function(self, ctx):
-        """Handle plot function calls - CORREGIDO COMPLETAMENTE"""
+        """Handle plot function calls"""
         try:
             if ctx.PLOT():
-                # ✅ CORRECCIÓN FINAL: Usar ctx.expression(0) como en scatter
                 data = self.visit(ctx.expression(0))
                 return self.plotter.plot(data)
                 
             elif ctx.SCATTER():
-                # ✅ Ya funciona correctamente
                 x_data = self.visit(ctx.expression(0))
                 y_data = self.visit(ctx.expression(1))
                 return self.plotter.scatter(x_data, y_data)
                 
             elif ctx.HISTOGRAM():
-                # ✅ CORRECCIÓN FINAL: Usar ctx.expression(0) como en scatter
                 data = self.visit(ctx.expression(0))
                 return self.plotter.histogram(data)
                 
@@ -568,8 +678,8 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
 
 # Error listener for custom error handling
 class DSLErrorListener(ErrorListener):
-    def __init__(self):  # ✅ CORREGIDO: __init__ en lugar de _init_
-        super(DSLErrorListener, self).__init__()  # ✅ CORREGIDO: __init__ en lugar de _init_
+    def __init__(self):
+        super(DSLErrorListener, self).__init__()
         self.errors = []
     
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
@@ -623,7 +733,7 @@ def interpret_code(code):
         return None, [str(e)]
 
 
-if __name__ == "__main__":  # ✅ CORREGIDO: __name__ == "__main__"
+if __name__ == "__main__":
     # Example usage
     code = """
     x = 5;

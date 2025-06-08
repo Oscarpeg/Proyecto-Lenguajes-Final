@@ -74,23 +74,23 @@ class DeepLearningDSLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by DeepLearningDSLParser#matrix_expr.
-    def visitMatrix_expr(self, ctx:DeepLearningDSLParser.Matrix_exprContext):
+    # Visit a parse tree produced by DeepLearningDSLParser#list_or_matrix_expr.
+    def visitList_or_matrix_expr(self, ctx:DeepLearningDSLParser.List_or_matrix_exprContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by DeepLearningDSLParser#matrix_content.
-    def visitMatrix_content(self, ctx:DeepLearningDSLParser.Matrix_contentContext):
+    # Visit a parse tree produced by DeepLearningDSLParser#list_or_matrix_content.
+    def visitList_or_matrix_content(self, ctx:DeepLearningDSLParser.List_or_matrix_contentContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by DeepLearningDSLParser#matrix_content_rest.
-    def visitMatrix_content_rest(self, ctx:DeepLearningDSLParser.Matrix_content_restContext):
+    # Visit a parse tree produced by DeepLearningDSLParser#list_or_matrix_content_rest.
+    def visitList_or_matrix_content_rest(self, ctx:DeepLearningDSLParser.List_or_matrix_content_restContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by DeepLearningDSLParser#matrix_row.
-    def visitMatrix_row(self, ctx:DeepLearningDSLParser.Matrix_rowContext):
+    # Visit a parse tree produced by DeepLearningDSLParser#list_or_matrix_row.
+    def visitList_or_matrix_row(self, ctx:DeepLearningDSLParser.List_or_matrix_rowContext):
         return self.visitChildren(ctx)
 
 

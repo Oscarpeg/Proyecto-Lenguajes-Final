@@ -31,7 +31,7 @@ base: ID
     | FLOAT
     | STRING
     | LPAREN expression RPAREN
-    | matrix_expr
+    | list_or_matrix_expr
     | function_call
     | unary_expr
     ;
@@ -40,19 +40,28 @@ unary_expr: MINUS base | trig_func LPAREN expression RPAREN ;
 
 trig_func: SIN | COS | TAN | SQRT ;
 
-// Matrix operations
-matrix_expr: LBRACKET matrix_content RBRACKET
-           | matrix_operation
-           ;
+// Lista o matriz (auto-detectado por el intérprete)
+list_or_matrix_expr: LBRACKET list_or_matrix_content RBRACKET
+                   | matrix_operation
+                   ;
 
-matrix_content: matrix_row matrix_content_rest ;
-matrix_content_rest: COMMA matrix_row matrix_content_rest | ;
+list_or_matrix_content: list_or_matrix_row list_or_matrix_content_rest 
+                      | /* empty para listas vacías */
+                      ;
 
-matrix_row: LBRACKET expression_list RBRACKET ;
+list_or_matrix_content_rest: COMMA list_or_matrix_row list_or_matrix_content_rest 
+                           | /* empty */
+                           ;
+
+// Una fila puede ser: [1, 2, 3] o [[1, 2], [3, 4]]
+list_or_matrix_row: LBRACKET expression_list RBRACKET  // Fila de matriz [[1, 2]]
+                  | expression                          // Elemento simple [1, 2, 3]
+                  ;
 
 expression_list: expression expression_list_rest ;
 expression_list_rest: COMMA expression expression_list_rest | ;
 
+// Matrix operations
 matrix_operation: TRANSPOSE LPAREN expression RPAREN
                 | INVERSE LPAREN expression RPAREN
                 | MATMULT LPAREN expression COMMA expression RPAREN
@@ -91,12 +100,20 @@ function_call: ID LPAREN arg_list RPAREN
 arg_list: expression arg_list_rest | ;
 arg_list_rest: COMMA expression arg_list_rest | ;
 
-// ML/DL Functions
+// ML/DL Functions (ACTUALIZADA CON K-MEANS Y AUTOENCODER)
 ml_function: LINEAR_REGRESSION LPAREN expression COMMA expression RPAREN
            | MLP_CLASSIFIER LPAREN expression COMMA expression COMMA expression RPAREN
            | NEURAL_NETWORK LPAREN expression COMMA expression COMMA expression RPAREN
            | PREDICT LPAREN expression COMMA expression RPAREN
            | TRAIN LPAREN expression COMMA expression RPAREN
+           | KMEANS LPAREN expression COMMA expression RPAREN
+           | FIT_PREDICT LPAREN expression COMMA expression RPAREN
+           | GET_CENTROIDS LPAREN expression RPAREN
+           | AUTOENCODER LPAREN expression COMMA expression RPAREN
+           | ENCODE LPAREN expression COMMA expression RPAREN
+           | DECODE LPAREN expression COMMA expression RPAREN
+           | RECONSTRUCT LPAREN expression COMMA expression RPAREN
+           | RECONSTRUCTION_ERROR LPAREN expression COMMA expression RPAREN
            ;
 
 // IO Functions
@@ -120,12 +137,20 @@ WHILE: 'while';
 DEF: 'def';
 RETURN: 'return';
 
-// ML Keywords
+// ML Keywords (ACTUALIZADA CON K-MEANS Y AUTOENCODER)
 LINEAR_REGRESSION: 'linear_regression';
 MLP_CLASSIFIER: 'mlp_classifier';
 NEURAL_NETWORK: 'neural_network';
 PREDICT: 'predict';
 TRAIN: 'train';
+KMEANS: 'kmeans';
+FIT_PREDICT: 'fit_predict';
+GET_CENTROIDS: 'get_centroids';
+AUTOENCODER: 'autoencoder';
+ENCODE: 'encode';
+DECODE: 'decode';
+RECONSTRUCT: 'reconstruct';
+RECONSTRUCTION_ERROR: 'reconstruction_error';
 
 // Matrix Keywords
 TRANSPOSE: 'transpose';
