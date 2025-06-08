@@ -256,4 +256,3 @@ class DeepLearningDSLLexer(Lexer):
         self._actions = None
         self._predicates = None
 
-

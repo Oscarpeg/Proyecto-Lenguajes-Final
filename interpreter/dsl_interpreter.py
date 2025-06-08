@@ -141,8 +141,6 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
         else:
             return left_value
     
-    # Métodos actualizados para el intérprete (dsl_interpreter.py)
-
     def visitBase(self, ctx):
         """Evaluate base expressions"""
         if ctx.ID():
@@ -161,75 +159,12 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
         elif ctx.expression():
             # Parenthesized expression
             return self.visit(ctx.expression())
-        elif ctx.list_or_matrix_expr():
-            return self.visit(ctx.list_or_matrix_expr())
+        elif ctx.matrix_expr():
+            return self.visit(ctx.matrix_expr())
         elif ctx.function_call():
             return self.visit(ctx.function_call())
         elif ctx.unary_expr():
             return self.visit(ctx.unary_expr())
-        return None
-
-    def visitList_or_matrix_expr(self, ctx):
-        """Handle list or matrix expressions with auto-detection"""
-        if ctx.list_or_matrix_content():
-            return self.visit(ctx.list_or_matrix_content())
-        elif ctx.matrix_operation():
-            return self.visit(ctx.matrix_operation())
-        return []
-
-    def visitList_or_matrix_content(self, ctx):
-        """Build list or matrix with auto-detection"""
-        if not ctx.list_or_matrix_row():
-            return []  # Empty list
-        
-        elements = []
-        
-        # Get first element/row
-        first_element = self.visit(ctx.list_or_matrix_row())
-        elements.append(first_element)
-        
-        # Get rest of elements/rows
-        if ctx.list_or_matrix_content_rest():
-            rest_elements = self.visit_list_or_matrix_content_rest(ctx.list_or_matrix_content_rest())
-            elements.extend(rest_elements)
-        
-        # AUTO-DETECTION:
-        # If all elements are primitives (int, float, str), return simple list
-        # If any element is a list, return matrix
-        
-        if all(isinstance(elem, (int, float, str, bool)) for elem in elements):
-            # Simple list: [1, 2, 3, "hello"]
-            return elements
-        elif all(isinstance(elem, list) for elem in elements):
-            # Matrix: [[1, 2], [3, 4]]
-            return self.matrix.create_matrix(elements)
-        else:
-            # Mixed types - treat as simple list
-            return elements
-
-    def visit_list_or_matrix_content_rest(self, ctx):
-        """Get remaining elements/rows"""
-        if not ctx or not ctx.list_or_matrix_row():
-            return []
-        
-        elements = []
-        element = self.visit(ctx.list_or_matrix_row())
-        elements.append(element)
-        
-        if ctx.list_or_matrix_content_rest():
-            rest_elements = self.visit_list_or_matrix_content_rest(ctx.list_or_matrix_content_rest())
-            elements.extend(rest_elements)
-        
-        return elements
-
-    def visitList_or_matrix_row(self, ctx):
-        """Handle a single row/element"""
-        if ctx.expression_list():
-            # Matrix row: [1, 2, 3]
-            return self.visit(ctx.expression_list())
-        elif ctx.expression():
-            # Simple element: 1, "hello", variable
-            return self.visit(ctx.expression())
         return None
     
     def visitUnary_expr(self, ctx):
@@ -243,7 +178,13 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
             return self.arithmetic.trigonometric(func_name, value)
         return None
     
-    
+    def visitMatrix_expr(self, ctx):
+        """Handle matrix expressions"""
+        if ctx.matrix_content():
+            return self.visit(ctx.matrix_content())
+        elif ctx.matrix_operation():
+            return self.visit(ctx.matrix_operation())
+        return None
     
     def visitMatrix_content(self, ctx):
         """Build matrix from content"""
@@ -258,8 +199,24 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
         
         return self.matrix.create_matrix(rows)
     
+    def visit_matrix_content_rest(self, ctx):
+        """Get remaining matrix rows"""
+        if not ctx or not ctx.matrix_row():
+            return []
+        
+        rows = []
+        row = self.visit(ctx.matrix_row())
+        rows.append(row)
+        
+        if ctx.matrix_content_rest():
+            rest_rows = self.visit_matrix_content_rest(ctx.matrix_content_rest())
+            rows.extend(rest_rows)
+        
+        return rows
     
-
+    def visitMatrix_row(self, ctx):
+        """Build a matrix row"""
+        return self.visit(ctx.expression_list())
     
     def visitExpression_list(self, ctx):
         """Build list of expressions"""

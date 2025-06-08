@@ -268,9 +268,12 @@ class MLPClassifierEngine:
         """Prepare target values for training"""
         # Convert y to simple list if it's a matrix format
         if isinstance(y[0], list):
-            y = [val[0] for val in y]
+            y = [val[0] for val in y]  # Extract first element from each sublist
         
-        unique_classes = list(set(y))
+        # Convert to basic Python types to ensure they're hashable
+        y = [int(val) if isinstance(val, (int, float)) else val for val in y]
+        
+        unique_classes = list(set(y))  # Now this should work
         n_classes = len(unique_classes)
         
         # Create class mapping
@@ -297,7 +300,7 @@ class MLPClassifierEngine:
         n_samples = len(X)
         n_features = len(X[0])
         
-        # Prepare targets
+        # Prepare targets (this is where the error was happening)
         targets, n_classes = self._prepare_targets(y)
         
         # Initialize weights using Xavier initialization
@@ -339,7 +342,7 @@ class MLPClassifierEngine:
                 
                 # Backward pass
                 self._backward_pass(sample, target, hidden_input, hidden_output, 
-                                  output_input, final_output, activation)
+                                output_input, final_output, activation)
             
             # Check convergence
             avg_loss = total_loss / n_samples
@@ -355,7 +358,14 @@ class MLPClassifierEngine:
         
         self.fitted = True
         self.n_classes = n_classes
-        self.classes = list(set(y))
+        
+        # Store classes properly - extract from original y
+        if isinstance(y[0], list):
+            original_y = [val[0] for val in y]
+        else:
+            original_y = y
+        
+        self.classes = sorted(list(set(original_y)))
         return self
     
     def predict_proba(self, X, activation='sigmoid'):
@@ -607,7 +617,7 @@ class NeuralNetworkEngine:
                 
                 # Simplified backward pass (gradient descent)
                 self._simple_backward_pass(sample, target, activations, z_values, 
-                                         hidden_activation, output_activation, task_type)
+                                        hidden_activation, output_activation, task_type)
             
             avg_loss = epoch_loss / n_samples
             self.loss_history.append(avg_loss)
