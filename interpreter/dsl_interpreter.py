@@ -141,6 +141,8 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
         else:
             return left_value
     
+    # Métodos actualizados para el intérprete (dsl_interpreter.py)
+
     def visitBase(self, ctx):
         """Evaluate base expressions"""
         if ctx.ID():
@@ -159,12 +161,75 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
         elif ctx.expression():
             # Parenthesized expression
             return self.visit(ctx.expression())
-        elif ctx.matrix_expr():
-            return self.visit(ctx.matrix_expr())
+        elif ctx.list_or_matrix_expr():
+            return self.visit(ctx.list_or_matrix_expr())
         elif ctx.function_call():
             return self.visit(ctx.function_call())
         elif ctx.unary_expr():
             return self.visit(ctx.unary_expr())
+        return None
+
+    def visitList_or_matrix_expr(self, ctx):
+        """Handle list or matrix expressions with auto-detection"""
+        if ctx.list_or_matrix_content():
+            return self.visit(ctx.list_or_matrix_content())
+        elif ctx.matrix_operation():
+            return self.visit(ctx.matrix_operation())
+        return []
+
+    def visitList_or_matrix_content(self, ctx):
+        """Build list or matrix with auto-detection"""
+        if not ctx.list_or_matrix_row():
+            return []  # Empty list
+        
+        elements = []
+        
+        # Get first element/row
+        first_element = self.visit(ctx.list_or_matrix_row())
+        elements.append(first_element)
+        
+        # Get rest of elements/rows
+        if ctx.list_or_matrix_content_rest():
+            rest_elements = self.visit_list_or_matrix_content_rest(ctx.list_or_matrix_content_rest())
+            elements.extend(rest_elements)
+        
+        # AUTO-DETECTION:
+        # If all elements are primitives (int, float, str), return simple list
+        # If any element is a list, return matrix
+        
+        if all(isinstance(elem, (int, float, str, bool)) for elem in elements):
+            # Simple list: [1, 2, 3, "hello"]
+            return elements
+        elif all(isinstance(elem, list) for elem in elements):
+            # Matrix: [[1, 2], [3, 4]]
+            return self.matrix.create_matrix(elements)
+        else:
+            # Mixed types - treat as simple list
+            return elements
+
+    def visit_list_or_matrix_content_rest(self, ctx):
+        """Get remaining elements/rows"""
+        if not ctx or not ctx.list_or_matrix_row():
+            return []
+        
+        elements = []
+        element = self.visit(ctx.list_or_matrix_row())
+        elements.append(element)
+        
+        if ctx.list_or_matrix_content_rest():
+            rest_elements = self.visit_list_or_matrix_content_rest(ctx.list_or_matrix_content_rest())
+            elements.extend(rest_elements)
+        
+        return elements
+
+    def visitList_or_matrix_row(self, ctx):
+        """Handle a single row/element"""
+        if ctx.expression_list():
+            # Matrix row: [1, 2, 3]
+            return self.visit(ctx.expression_list())
+        elif ctx.expression():
+            # Simple element: 1, "hello", variable
+            return self.visit(ctx.expression())
         return None
     
     def visitUnary_expr(self, ctx):
@@ -178,13 +243,7 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
             return self.arithmetic.trigonometric(func_name, value)
         return None
     
-    def visitMatrix_expr(self, ctx):
-        """Handle matrix expressions"""
-        if ctx.matrix_content():
-            return self.visit(ctx.matrix_content())
-        elif ctx.matrix_operation():
-            return self.visit(ctx.matrix_operation())
-        return None
+    
     
     def visitMatrix_content(self, ctx):
         """Build matrix from content"""
@@ -199,24 +258,8 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
         
         return self.matrix.create_matrix(rows)
     
-    def visit_matrix_content_rest(self, ctx):
-        """Get remaining matrix rows"""
-        if not ctx or not ctx.matrix_row():
-            return []
-        
-        rows = []
-        row = self.visit(ctx.matrix_row())
-        rows.append(row)
-        
-        if ctx.matrix_content_rest():
-            rest_rows = self.visit_matrix_content_rest(ctx.matrix_content_rest())
-            rows.extend(rest_rows)
-        
-        return rows
     
-    def visitMatrix_row(self, ctx):
-        """Build a matrix row"""
-        return self.visit(ctx.expression_list())
+
     
     def visitExpression_list(self, ctx):
         """Build list of expressions"""
@@ -424,25 +467,55 @@ class DSLInterpreter(DeepLearningDSLBaseVisitor):
         if ctx.LINEAR_REGRESSION():
             X = self.visit(ctx.expression(0))
             y = self.visit(ctx.expression(1))
-            return self.linear_reg.fit(X, y)
+            
+            # Create a new linear regression model and fit it
+            model = self.linear_reg.__class__()  # Create new instance
+            return model.fit(X, y)
+            
         elif ctx.MLP_CLASSIFIER():
             X = self.visit(ctx.expression(0))
             y = self.visit(ctx.expression(1))
             hidden_size = self.visit(ctx.expression(2))
-            return self.mlp.fit(X, y, hidden_size)
+            
+            # Create a new MLP classifier model and fit it
+            model = self.mlp.__class__(hidden_size=hidden_size)
+            return model.fit(X, y)
+            
         elif ctx.NEURAL_NETWORK():
             X = self.visit(ctx.expression(0))
             y = self.visit(ctx.expression(1))
             architecture = self.visit(ctx.expression(2))
-            return self.neural_net.create(X, y, architecture)
+            
+            # Create a new neural network model
+            model = self.neural_net.__class__(architecture=architecture)
+            return model.fit(X, y)
+            
         elif ctx.PREDICT():
             model = self.visit(ctx.expression(0))
             X = self.visit(ctx.expression(1))
-            return model.predict(X)
+            
+            # Check if model has predict method
+            if hasattr(model, 'predict'):
+                return model.predict(X)
+            else:
+                raise ValueError("Object does not have predict method")
+                
         elif ctx.TRAIN():
             model = self.visit(ctx.expression(0))
             data = self.visit(ctx.expression(1))
-            return model.train(data)
+            
+            # Check if model has train method, or use fit
+            if hasattr(model, 'train'):
+                return model.train(data)
+            elif hasattr(model, 'fit'):
+                # Assume data is [X, y] format
+                if isinstance(data, list) and len(data) == 2:
+                    return model.fit(data[0], data[1])
+                else:
+                    raise ValueError("Train data must be [X, y] format")
+            else:
+                raise ValueError("Object does not have train or fit method")
+        
         return None
     
     def visitIo_function(self, ctx):

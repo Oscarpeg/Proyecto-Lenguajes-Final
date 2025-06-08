@@ -31,12 +31,16 @@ class LinearRegressionEngine:
         """
         Fit linear regression model
         X: feature matrix (list of lists) or list for single feature
-        y: target values (list)
+        y: target values (list) or list of lists for single target
         Returns: self (fitted model)
         """
         # Convert single feature to matrix format
         if isinstance(X[0], (int, float)):
             X = [[x] for x in X]
+        
+        # Convert y to simple list if it's a matrix format
+        if isinstance(y[0], list):
+            y = [val[0] for val in y]  # Extract first (and only) element from each sublist
         
         # Validate dimensions
         if len(X) != len(y):
@@ -107,11 +111,15 @@ class LinearRegressionEngine:
         """
         Calculate R^2 score (coefficient of determination)
         X: feature matrix
-        y: true target values
+        y: true target values (list) or list of lists
         Returns: R^2 score
         """
         if not self.fitted:
             raise ValueError("Model must be fitted before scoring")
+        
+        # Convert y to simple list if it's a matrix format
+        if isinstance(y[0], list):
+            y = [val[0] for val in y]
         
         y_pred = self.predict(X)
         
@@ -258,6 +266,10 @@ class MLPClassifierEngine:
     
     def _prepare_targets(self, y):
         """Prepare target values for training"""
+        # Convert y to simple list if it's a matrix format
+        if isinstance(y[0], list):
+            y = [val[0] for val in y]
+        
         unique_classes = list(set(y))
         n_classes = len(unique_classes)
         
@@ -275,7 +287,7 @@ class MLPClassifierEngine:
         """
         Fit the MLP classifier
         X: feature matrix (list of lists) or list for single feature
-        y: target labels (list)
+        y: target labels (list) or list of lists
         activation: activation function ('sigmoid', 'tanh', 'relu')
         """
         # Convert single feature to matrix format
@@ -390,6 +402,11 @@ class MLPClassifierEngine:
     def accuracy(self, X, y, activation='sigmoid'):
         """Calculate accuracy"""
         predictions = self.predict(X, activation)
+        
+        # Convert y to simple list if it's a matrix format
+        if isinstance(y[0], list):
+            y = [val[0] for val in y]
+        
         correct = sum(1 for pred, true in zip(predictions, y) if pred == true)
         return correct / len(y)
 
@@ -532,10 +549,14 @@ class NeuralNetworkEngine:
         if isinstance(X[0], (int, float)):
             X = [[x] for x in X]
         
+        # Convert y to simple list if it's a matrix format
+        if isinstance(y[0], list):
+            y = [val[0] for val in y]
+        
         # Set architecture if not provided
         if not self.architecture or len(self.architecture) < 2:
             n_features = len(X[0])
-            n_outputs = len(y[0]) if isinstance(y[0], list) else 1
+            n_outputs = 1  # Simplified for now
             self.architecture = [n_features, 10, n_outputs]
         
         # Initialize parameters
@@ -546,12 +567,12 @@ class NeuralNetworkEngine:
             # Convert class labels to indices
             unique_classes = sorted(list(set(y)))
             class_to_idx = {cls: i for i, cls in enumerate(unique_classes)}
-            y = [[class_to_idx[label]] for label in y]
+            y = [class_to_idx[label] for label in y]
             self.architecture[-1] = len(unique_classes)
             self._initialize_parameters()  # Re-initialize with correct output size
-        elif task_type == 'regression' and not isinstance(y[0], list):
-            # Convert to list format
-            y = [[target] for target in y]
+        elif task_type == 'regression':
+            # Already converted to simple list above
+            pass
         
         n_samples = len(X)
         
@@ -575,12 +596,12 @@ class NeuralNetworkEngine:
                 
                 # Calculate loss
                 if task_type == 'regression':
-                    loss = sum((pred - true) ** 2 for pred, true in zip(activations[-1], target)) / len(target)
+                    loss = (activations[-1][0] - target) ** 2
                 else:
                     # Classification loss (simplified)
                     pred = activations[-1][0]
                     pred = max(1e-15, min(1 - 1e-15, pred))
-                    loss = -(target[0] * math.log(pred) + (1 - target[0]) * math.log(1 - pred))
+                    loss = -(target * math.log(pred) + (1 - target) * math.log(1 - pred))
                 
                 epoch_loss += loss
                 
@@ -616,10 +637,10 @@ class NeuralNetworkEngine:
         
         # Calculate output layer error
         if task_type == 'regression':
-            output_errors = [pred - true for pred, true in zip(activations[-1], y)]
+            output_errors = [activations[-1][0] - y]
         else:
             # Binary classification
-            output_errors = [activations[-1][0] - y[0]]
+            output_errors = [activations[-1][0] - y]
         
         # Update output layer
         for i in range(len(self.weights[-1])):
@@ -648,7 +669,7 @@ class NeuralNetworkEngine:
         predictions = []
         for sample in X:
             activations, _ = self.forward_pass(sample, self.hidden_activation, self.output_activation)
-            predictions.append(activations[-1][:])
+            predictions.append(activations[-1][0])  # Return single value instead of list
         
         return predictions
     
@@ -657,19 +678,17 @@ class NeuralNetworkEngine:
         if not self.fitted:
             raise ValueError("Model must be fitted before scoring")
         
+        # Convert y to simple list if it's a matrix format
+        if isinstance(y[0], list):
+            y = [val[0] for val in y]
+        
         predictions = self.predict(X)
         
         if self.task_type == 'regression':
             # R^2 score
-            if not isinstance(y[0], list):
-                y = [[target] for target in y]
-            
-            y_flat = [target[0] for target in y]
-            pred_flat = [pred[0] for pred in predictions]
-            
-            y_mean = self.arithmetic_engine.mean(y_flat)
-            ss_res = sum((true - pred) ** 2 for true, pred in zip(y_flat, pred_flat))
-            ss_tot = sum((true - y_mean) ** 2 for true in y_flat)
+            y_mean = self.arithmetic_engine.mean(y)
+            ss_res = sum((true - pred) ** 2 for true, pred in zip(y, predictions))
+            ss_tot = sum((true - y_mean) ** 2 for true in y)
             
             return 1 - (ss_res / ss_tot) if ss_tot != 0 else 1.0
         
@@ -677,8 +696,8 @@ class NeuralNetworkEngine:
             # Accuracy for classification
             correct = 0
             for i in range(len(y)):
-                pred_class = 1 if predictions[i][0] > 0.5 else 0
-                true_class = y[i] if not isinstance(y[i], list) else y[i][0]
+                pred_class = 1 if predictions[i] > 0.5 else 0
+                true_class = y[i]
                 
                 if pred_class == true_class:
                     correct += 1
