@@ -5,13 +5,16 @@ program: statement_list EOF;
 
 statement_list: statement statement_list | ;
 
-statement: assignment SEMICOLON
+statement: assignment semicolon_opt
          | conditional 
          | loop
          | function_def
-         | function_call SEMICOLON
-         | expression SEMICOLON
+         | function_call semicolon_opt
+         | expression semicolon_opt
          ;
+
+// Hacer semicolon opcional (como en Python)
+semicolon_opt: SEMICOLON | /* empty */ ;
 
 // Assignments
 assignment: ID ASSIGN expression ;
@@ -78,7 +81,7 @@ rel_op: EQ | NE | LT | LE | GT | GE ;
 
 loop: for_loop | while_loop ;
 
-for_loop: FOR LPAREN assignment SEMICOLON condition SEMICOLON assignment RPAREN LBRACE statement_list RBRACE ;
+for_loop: FOR LPAREN assignment semicolon_opt condition semicolon_opt assignment RPAREN LBRACE statement_list RBRACE ;
 
 while_loop: WHILE LPAREN condition RPAREN LBRACE statement_list RBRACE ;
 
@@ -88,7 +91,7 @@ function_def: DEF ID LPAREN param_list RPAREN LBRACE statement_list return_stmt 
 param_list: ID param_list_rest | ;
 param_list_rest: COMMA ID param_list_rest | ;
 
-return_stmt: RETURN expression SEMICOLON ;
+return_stmt: RETURN expression semicolon_opt ;
 
 // Function calls
 function_call: ID LPAREN arg_list RPAREN
@@ -100,7 +103,7 @@ function_call: ID LPAREN arg_list RPAREN
 arg_list: expression arg_list_rest | ;
 arg_list_rest: COMMA expression arg_list_rest | ;
 
-// ML/DL Functions (ACTUALIZADA CON K-MEANS Y AUTOENCODER)
+// ML/DL Functions (COMPLETA: K-MEANS + AUTOENCODER)
 ml_function: LINEAR_REGRESSION LPAREN expression COMMA expression RPAREN
            | MLP_CLASSIFIER LPAREN expression COMMA expression COMMA expression RPAREN
            | NEURAL_NETWORK LPAREN expression COMMA expression COMMA expression RPAREN
@@ -137,7 +140,7 @@ WHILE: 'while';
 DEF: 'def';
 RETURN: 'return';
 
-// ML Keywords (ACTUALIZADA CON K-MEANS Y AUTOENCODER)
+// ML Keywords (COMPLETOS: REGRESSION + MLP + KMEANS + AUTOENCODER)
 LINEAR_REGRESSION: 'linear_regression';
 MLP_CLASSIFIER: 'mlp_classifier';
 NEURAL_NETWORK: 'neural_network';

@@ -35,6 +35,15 @@ class DeepLearningDSLListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by DeepLearningDSLParser#semicolon_opt.
+    def enterSemicolon_opt(self, ctx:DeepLearningDSLParser.Semicolon_optContext):
+        pass
+
+    # Exit a parse tree produced by DeepLearningDSLParser#semicolon_opt.
+    def exitSemicolon_opt(self, ctx:DeepLearningDSLParser.Semicolon_optContext):
+        pass
+
+
     # Enter a parse tree produced by DeepLearningDSLParser#assignment.
     def enterAssignment(self, ctx:DeepLearningDSLParser.AssignmentContext):
         pass

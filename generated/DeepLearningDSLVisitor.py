@@ -24,6 +24,11 @@ class DeepLearningDSLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by DeepLearningDSLParser#semicolon_opt.
+    def visitSemicolon_opt(self, ctx:DeepLearningDSLParser.Semicolon_optContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by DeepLearningDSLParser#assignment.
     def visitAssignment(self, ctx:DeepLearningDSLParser.AssignmentContext):
         return self.visitChildren(ctx)
